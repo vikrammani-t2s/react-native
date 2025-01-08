@@ -248,103 +248,129 @@ public class ReactModalHostView extends ViewGroup
    * new Dialog.
    */
   protected void showOrUpdate() {
-    UiThreadUtil.assertOnUiThread();
+      UiThreadUtil.assertOnUiThread();
 
-    // If the existing Dialog is currently up, we may need to redraw it or we may be able to update
-    // the property without having to recreate the dialog
-    if (mDialog != null) {
-      Context dialogContext = ContextUtils.findContextOfType(mDialog.getContext(), Activity.class);
-      // TODO(T85755791): remove after investigation
-      FLog.e(
-          TAG,
-          "Updating existing dialog with context: "
-              + dialogContext
-              + "@"
-              + dialogContext.hashCode());
+      // If the existing Dialog is currently up, we may need to redraw it or we may be able to update
+      // the property without having to recreate the dialog
+      if (mDialog != null) {
+        Context dialogContext = ContextUtils.findContextOfType(mDialog.getContext(), Activity.class);
+        // TODO(T85755791): remove after investigation
+        FLog.e(
+            TAG,
+            "Updating existing dialog with context: "
+                + dialogContext
+                + "@"
+                + dialogContext.hashCode());
 
-      if (mPropertyRequiresNewDialog) {
-        dismiss();
-      } else {
-        updateProperties();
-        return;
-      }
-    }
-
-    // Reset the flag since we are going to create a new dialog
-    mPropertyRequiresNewDialog = false;
-    int theme = R.style.Theme_FullScreenDialog;
-    if (mAnimationType.equals("fade")) {
-      theme = R.style.Theme_FullScreenDialogAnimatedFade;
-    } else if (mAnimationType.equals("slide")) {
-      theme = R.style.Theme_FullScreenDialogAnimatedSlide;
-    }
-    Activity currentActivity = getCurrentActivity();
-    Context context = currentActivity == null ? getContext() : currentActivity;
-    mDialog = new Dialog(context, theme);
-    mDialog
-        .getWindow()
-        .setFlags(
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE);
-
-    // TODO(T85755791): remove after investigation
-    FLog.e(TAG, "Creating new dialog from context: " + context + "@" + context.hashCode());
-
-    mDialog.setContentView(getContentView());
-    updateProperties();
-
-    mDialog.setOnShowListener(mOnShowListener);
-    mDialog.setOnKeyListener(
-        new DialogInterface.OnKeyListener() {
-          @Override
-          public boolean onKey(DialogInterface dialog, int keyCode, KeyEvent event) {
-            if (event.getAction() == KeyEvent.ACTION_UP) {
-              // We need to stop the BACK button and ESCAPE key from closing the dialog by default
-              // so we capture that event and instead inform JS so that it can make the decision as
-              // to whether or not to allow the back/escape key to close the dialog. If it chooses
-              // to, it can just set visible to false on the Modal and the Modal will go away
-              if (keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_ESCAPE) {
-                Assertions.assertNotNull(
-                    mOnRequestCloseListener,
-                    "setOnRequestCloseListener must be called by the manager");
-                mOnRequestCloseListener.onRequestClose(dialog);
-                return true;
-              } else {
-                // We redirect the rest of the key events to the current activity, since the
-                // activity expects to receive those events and react to them, ie. in the case of
-                // the dev menu
-                Activity currentActivity = ((ReactContext) getContext()).getCurrentActivity();
-                if (currentActivity != null) {
-                  return currentActivity.onKeyUp(keyCode, event);
-                }
-              }
-            }
-            return false;
-          }
-        });
-
-    mDialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
-    if (mHardwareAccelerated) {
-      mDialog.getWindow().addFlags(WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED);
-    }
-    if (currentActivity != null && !currentActivity.isFinishing()) {
-      mDialog.show();
-      if (context instanceof Activity) {
-        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.R) {
-          int appearance =
-              ((Activity) context).getWindow().getInsetsController().getSystemBarsAppearance();
-          mDialog.getWindow().getInsetsController().setSystemBarsAppearance(appearance, appearance);
+        if (mPropertyRequiresNewDialog) {
+          dismiss();
         } else {
-          mDialog
-              .getWindow()
-              .getDecorView()
-              .setSystemUiVisibility(
-                  ((Activity) context).getWindow().getDecorView().getSystemUiVisibility());
+          updateProperties();
+          return;
         }
       }
-      mDialog.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE);
+
+      // Reset the flag since we are going to create a new dialog
+      mPropertyRequiresNewDialog = false;
+      int theme = R.style.Theme_FullScreenDialog;
+      if (mAnimationType.equals("fade")) {
+        theme = R.style.Theme_FullScreenDialogAnimatedFade;
+      } else if (mAnimationType.equals("slide")) {
+        theme = R.style.Theme_FullScreenDialogAnimatedSlide;
+      }
+      Activity currentActivity = getCurrentActivity();
+      Context context = currentActivity == null ? getContext() : currentActivity;
+      mDialog = new Dialog(context, theme);
+      mDialog
+          .getWindow()
+          .setFlags(
+              WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+              WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE);
+
+      // TODO(T85755791): remove after investigation
+      FLog.e(TAG, "Creating new dialog from context: " + context + "@" + context.hashCode());
+
+      mDialog.setContentView(getContentView());
+      updateProperties();
+
+      mDialog.setOnShowListener(mOnShowListener);
+      mDialog.setOnKeyListener(
+          new DialogInterface.OnKeyListener() {
+            @Override
+            public boolean onKey(DialogInterface dialog, int keyCode, KeyEvent event) {
+              if (event.getAction() == KeyEvent.ACTION_UP) {
+                // We need to stop the BACK button and ESCAPE key from closing the dialog by default
+                // so we capture that event and instead inform JS so that it can make the decision as
+                // to whether or not to allow the back/escape key to close the dialog. If it chooses
+                // to, it can just set visible to false on the Modal and the Modal will go away
+                if (keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_ESCAPE) {
+                  Assertions.assertNotNull(
+                      mOnRequestCloseListener,
+                      "setOnRequestCloseListener must be called by the manager");
+                  mOnRequestCloseListener.onRequestClose(dialog);
+                  return true;
+                } else {
+                  // We redirect the rest of the key events to the current activity, since the
+                  // activity expects to receive those events and react to them, ie. in the case of
+                  // the dev menu
+                  Activity currentActivity = ((ReactContext) getContext()).getCurrentActivity();
+                  if (currentActivity != null) {
+                    return currentActivity.onKeyUp(keyCode, event);
+                  }
+                }
+              }
+              return false;
+            }
+          });
+
+      mDialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+      if (mHardwareAccelerated) {
+        mDialog.getWindow().addFlags(WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED);
+      }
+      if (currentActivity != null && !currentActivity.isFinishing()) {
+        mDialog.show();
+        if (context instanceof Activity) {
+          if (Build.VERSION.SDK_INT > Build.VERSION_CODES.R) {
+            Window window = ((Activity) context).getWindow();
+            WindowInsetsController windowInsetsController = window.getInsetsController();
+            WindowInsetsController dialogWindowInsetsController = mDialog.getWindow().getInsetsController();
+
+            int appearance = windowInsetsController.getSystemBarsAppearance();
+            dialogWindowInsetsController.setSystemBarsAppearance(appearance, appearance);
+            dialogWindowInsetsController.setSystemBarsBehavior(windowInsetsController.getSystemBarsBehavior());
+
+            boolean statusBarsIsVisible = window.getDecorView().getRootWindowInsets().isVisible(WindowInsetsCompat.Type.statusBars());
+            if (statusBarsIsVisible) {
+              dialogWindowInsetsController.show(WindowInsetsCompat.Type.statusBars());
+            } else {
+              dialogWindowInsetsController.hide(WindowInsetsCompat.Type.statusBars());
+            }
+
+            boolean navigationBarsIsVisible = window.getDecorView().getRootWindowInsets().isVisible(WindowInsetsCompat.Type.navigationBars());
+            if (navigationBarsIsVisible) {
+              dialogWindowInsetsController.show(WindowInsetsCompat.Type.navigationBars());
+            } else {
+              dialogWindowInsetsController.hide(WindowInsetsCompat.Type.navigationBars());
+            }
+
+            boolean captionBarIsVisible = window.getDecorView().getRootWindowInsets().isVisible(WindowInsetsCompat.Type.captionBar());
+            if (captionBarIsVisible) {
+              dialogWindowInsetsController.show(WindowInsetsCompat.Type.captionBar());
+            } else {
+              dialogWindowInsetsController.hide(WindowInsetsCompat.Type.captionBar());
+            }
+          } else {
+            mDialog
+                .getWindow()
+                .getDecorView()
+                .setSystemUiVisibility(
+                    ((Activity) context).getWindow().getDecorView().getSystemUiVisibility());
+          }
+        }
+        mDialog.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE);
+      }
     }
-  }
+
 
   /**
    * Returns the view that will be the root view of the dialog. We are wrapping this in a
